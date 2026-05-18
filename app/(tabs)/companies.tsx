@@ -4,10 +4,15 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Card, Text, Button } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
-import { fetchCompanies } from "../../services/companyService";
+import { router } from "expo-router";
+import {
+  fetchCompanies,
+  deleteCompany,
+} from "../../services/companyService";
 
 export default function CompaniesScreen() {
   const [companies, setCompanies] = useState([]);
@@ -30,6 +35,46 @@ export default function CompaniesScreen() {
 
     setCompanies(result.data || []);
     setLoading(false);
+  }
+
+  async function handleDelete(id: string) {
+    Alert.alert(
+      "Delete Company",
+      "Are you sure you want to delete this company?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const token = await SecureStore.getItemAsync("token");
+            const result = await deleteCompany(id, token);
+
+            if (!result.success) {
+              Alert.alert("Error", result.message);
+              return;
+            }
+
+            Alert.alert("Success", "Company deleted successfully");
+            loadCompanies();
+          },
+        },
+      ]
+    );
+  }
+
+  function handleEdit(item: any) {
+    router.push({
+      pathname: "/edit-company",
+      params: {
+        id: item._id || item.id,
+        name: item.name || item.companyName || "",
+        industry: item.industry || "",
+        location: item.location || "",
+        website: item.website || "",
+        notes: item.notes || "",
+      },
+    });
   }
 
   useEffect(() => {
@@ -59,7 +104,11 @@ export default function CompaniesScreen() {
 
   return (
     <View style={styles.container}>
-      <Button mode="contained" style={styles.addButton}>
+      <Button
+        mode="contained"
+        style={styles.addButton}
+        onPress={() => router.push("/add-company")}
+      >
         Add Company
       </Button>
 
@@ -75,16 +124,24 @@ export default function CompaniesScreen() {
                 {item.name || item.companyName}
               </Text>
 
-              <Text>
-                {item.industry || "No industry provided"}
-              </Text>
+              <Text>{item.industry || "No industry provided"}</Text>
+              <Text>{item.location || "No location provided"}</Text>
             </Card.Content>
+
+            <Card.Actions>
+              <Button onPress={() => handleEdit(item)}>Edit</Button>
+
+              <Button
+                textColor="red"
+                onPress={() => handleDelete(item._id || item.id)}
+              >
+                Delete
+              </Button>
+            </Card.Actions>
           </Card>
         )}
         ListEmptyComponent={
-          <Text style={styles.message}>
-            No companies found.
-          </Text>
+          <Text style={styles.message}>No companies found.</Text>
         }
       />
     </View>

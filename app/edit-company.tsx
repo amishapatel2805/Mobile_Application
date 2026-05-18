@@ -1,19 +1,21 @@
 import { View, StyleSheet, Alert } from "react-native";
 import { TextInput, Button, Text } from "react-native-paper";
 import { useState } from "react";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { createCompany } from "../services/companyService";
+import { updateCompany } from "../services/companyService";
 
-export default function AddCompanyScreen() {
-  const [name, setName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [location, setLocation] = useState("");
-  const [website, setWebsite] = useState("");
-  const [notes, setNotes] = useState("");
+export default function EditCompanyScreen() {
+  const params = useLocalSearchParams();
+
+  const [name, setName] = useState(String(params.name || ""));
+  const [industry, setIndustry] = useState(String(params.industry || ""));
+  const [location, setLocation] = useState(String(params.location || ""));
+  const [website, setWebsite] = useState(String(params.website || ""));
+  const [notes, setNotes] = useState(String(params.notes || ""));
   const [loading, setLoading] = useState(false);
 
-  async function handleSave() {
+  async function handleUpdate() {
     if (!name || !industry || !location) {
       Alert.alert(
         "Error",
@@ -26,7 +28,8 @@ export default function AddCompanyScreen() {
 
     const token = await SecureStore.getItemAsync("token");
 
-    const result = await createCompany(
+    const result = await updateCompany(
+      String(params.id),
       {
         name,
         industry,
@@ -44,15 +47,14 @@ export default function AddCompanyScreen() {
       return;
     }
 
-    Alert.alert("Success", "Company added successfully");
-
+    Alert.alert("Success", "Company updated successfully");
     router.replace("/(tabs)/companies");
   }
 
   return (
     <View style={styles.container}>
       <Text variant="headlineMedium" style={styles.title}>
-        Add Company
+        Edit Company
       </Text>
 
       <TextInput
@@ -97,12 +99,8 @@ export default function AddCompanyScreen() {
         style={styles.input}
       />
 
-      <Button
-        mode="contained"
-        onPress={handleSave}
-        loading={loading}
-      >
-        Save Company
+      <Button mode="contained" onPress={handleUpdate} loading={loading}>
+        Update Company
       </Button>
     </View>
   );
@@ -114,12 +112,10 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: "#f5f5f5",
   },
-
   title: {
     marginBottom: 20,
     fontWeight: "bold",
   },
-
   input: {
     marginBottom: 15,
   },
