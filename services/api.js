@@ -11,27 +11,24 @@ export async function apiRequest(
       "Content-Type": "application/json",
     };
 
-    // Add token if available
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
+
+    console.log("API URL:", `${BASE_URL}${endpoint}`);
+    console.log("TOKEN SENT:", token ? "YES" : "NO");
 
     const options = {
       method,
       headers,
     };
 
-    // Add body for POST, PUT, DELETE
     if (body) {
       options.body = JSON.stringify(body);
     }
 
-    const response = await fetch(
-      `${BASE_URL}${endpoint}`,
-      options
-    );
+    const response = await fetch(`${BASE_URL}${endpoint}`, options);
 
-    // Try parsing response safely
     let responseData = null;
 
     try {
@@ -40,23 +37,22 @@ export async function apiRequest(
       responseData = null;
     }
 
-    // Handle API errors
     if (!response.ok) {
+      console.log("API ERROR RESPONSE:", response.status, responseData);
+
       return {
         success: false,
         message:
           responseData?.message ||
-          "Something went wrong.",
+          `Request failed with status ${response.status}`,
       };
     }
 
-    // Success response
     return {
       success: true,
       data: responseData,
     };
   } catch (error) {
-    // Network/server failure handling
     console.error("API Error:", error);
 
     return {

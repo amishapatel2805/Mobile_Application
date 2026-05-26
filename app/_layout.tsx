@@ -22,6 +22,14 @@ export default function RootLayout() {
         name="add-company"
         options={{ title: "Add Company" }}
       />
-    </Stack>
+
+      <Stack.Screen 
+          name="add-application" 
+          options={{ title: "Add Application" }} 
+          />
+      <Stack.Screen 
+          name="edit-application" 
+          options={{ title: "Edit Application" }} />
+          </Stack>
   );
 }
