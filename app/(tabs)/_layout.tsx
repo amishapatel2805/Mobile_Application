@@ -1,34 +1,37 @@
 import { Tabs } from "expo-router";
+import { PaperProvider } from "react-native-paper";
 
 export default function TabLayout() {
   return (
-    <Tabs>
-      <Tabs.Screen
-        name="index"
-        options={{
-          href: null,
-        }}
-      />
+    <PaperProvider>
+      <Tabs>
+        <Tabs.Screen
+          name="index"
+          options={{
+            href: null,
+          }}
+        />
 
-      <Tabs.Screen
-        name="dashboard"
-        options={{ title: "Dashboard" }}
-      />
+        <Tabs.Screen
+          name="dashboard"
+          options={{ title: "Dashboard" }}
+        />
 
-      <Tabs.Screen
-        name="companies"
-        options={{ title: "Companies" }}
-      />
+        <Tabs.Screen
+          name="companies"
+          options={{ title: "Companies" }}
+        />
 
-      <Tabs.Screen
-        name="applications"
-        options={{ title: "Applications" }}
-      />
+        <Tabs.Screen
+          name="applications"
+          options={{ title: "Applications" }}
+        />
 
-      <Tabs.Screen
-        name="interviews"
-        options={{ title: "Interviews" }}
-      />
-    </Tabs>
+        <Tabs.Screen
+          name="interviews"
+          options={{ title: "Interviews" }}
+        />
+      </Tabs>
+    </PaperProvider>
   );
 }

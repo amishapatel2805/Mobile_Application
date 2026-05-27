@@ -1,7 +1,17 @@
 import { apiRequest } from "./api";
 
-export async function fetchCompanies(token) {
-  return await apiRequest("/api/companies", "GET", null, token);
+export async function fetchCompanies(
+  token,
+  page = 1,
+  search = "",
+  sort = "oldest"
+) {
+  const query = new URLSearchParams({
+    search,
+    sort,
+    page: page.toString(),
+  }).toString();
+  return await apiRequest(`/api/companies?${query}`, "GET", null, token);
 }
 
 export async function createCompany(company, token) {

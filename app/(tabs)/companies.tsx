@@ -1,62 +1,84 @@
+import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
-  View,
-  FlatList,
-  StyleSheet,
   ActivityIndicator,
   Alert,
+  FlatList,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Card, Text, Button } from "react-native-paper";
-import * as SecureStore from "expo-secure-store";
-import { router } from "expo-router";
-import {
-  fetchCompanies,
-  deleteCompany,
-} from "../../services/companyService";
+import { Button, Card, Menu, Text } from "react-native-paper";
+import { deleteCompany, fetchCompanies } from "../../services/companyService";
+
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "name_asc", label: "Name A-Z" },
+  { value: "name_desc", label: "Name Z-A" },
+];
 
 export default function CompaniesScreen() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("oldest");
+  const [menuVisible, setMenuVisible] = useState(false);
 
-  async function loadCompanies() {
-    setLoading(true);
-    setErrorMessage("");
-
+  async function loadCompanies(pageNumber = 1, reset = false) {
+    if (loadingMore) return;
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     const token = await SecureStore.getItemAsync("token");
-    const result = await fetchCompanies(token);
-
+    const result = await fetchCompanies(token, pageNumber, search, sort);
     if (!result.success) {
       setErrorMessage(result.message);
-      setCompanies([]);
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
-
-    setCompanies(result.data || []);
+    const newCompanies = result.data?.companies || result.data || [];
+    setCompanies((prev) => (reset ? newCompanies : [...prev, ...newCompanies]));
+    setHasMore(newCompanies.length > 0);
+    setPage(pageNumber);
     setLoading(false);
+    setLoadingMore(false);
   }
 
   async function handleDelete(id: string) {
-    Alert.alert("Delete Company", "Are you sure you want to delete this company?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const token = await SecureStore.getItemAsync("token");
-          const result = await deleteCompany(id, token);
-
-          if (!result.success) {
-            Alert.alert("Error", result.message);
-            return;
-          }
-
-          Alert.alert("Success", "Company deleted successfully");
-          loadCompanies();
+    Alert.alert(
+      "Delete Company",
+      "Are you sure you want to delete this company?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      },
-    ]);
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            const token = await SecureStore.getItemAsync("token");
+            const result = await deleteCompany(id, token);
+            if (!result.success) {
+              Alert.alert("Error", result.message);
+              return;
+            }
+            Alert.alert("Success", "Company deleted successfully");
+            loadCompanies(1, true);
+          },
+        },
+      ]
+    );
   }
 
   function handleEdit(item: any) {
@@ -74,24 +96,20 @@ export default function CompaniesScreen() {
   }
 
   useEffect(() => {
-    loadCompanies();
-  }, []);
+    const delay = setTimeout(() => {
+      loadCompanies(1, true);
+    }, 400);
+    return () => clearTimeout(delay);
+  }, [search, sort]);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.message}>Loading companies...</Text>
-      </View>
-    );
-  }
+  const activeSortLabel =
+    SORT_OPTIONS.find((item) => item.value === sort)?.label || "Sort";
 
   if (errorMessage) {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>{errorMessage}</Text>
-
-        <Button mode="contained" buttonColor="#1976D2" onPress={loadCompanies}>
+        <Button mode="contained" onPress={() => loadCompanies(1, true)}>
           Retry
         </Button>
       </View>
@@ -100,74 +118,113 @@ export default function CompaniesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text variant="headlineLarge" style={styles.heading}>
-        Companies
-      </Text>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <Text style={styles.heading}>Companies</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => router.push("/add-company")}
+        >
+          <Text style={styles.addButtonPlus}>+</Text>
+          <Text style={styles.addButtonLabel}>Add Company</Text>
+        </TouchableOpacity>
+      </View>
 
-      <Button
-        mode="contained"
-        buttonColor="#1976D2"
-        textColor="white"
-        style={styles.addButton}
-        onPress={() => router.push("/add-company")}
-      >
-        + Add Company
-      </Button>
+      {/* Search + Filter */}
+      <View style={styles.searchRow}>
+        <TextInput
+          placeholder="Search companies..."
+          placeholderTextColor="#94A3B8"
+          value={search}
+          onChangeText={setSearch}
+          style={styles.searchInput}
+        />
 
-      <FlatList
-        data={companies}
-        keyExtractor={(item: any) =>
-          item.id?.toString() || item._id?.toString()
-        }
-        renderItem={({ item }: any) => (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleLarge" style={styles.companyName}>
-                {item.name || item.companyName}
-              </Text>
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setMenuVisible(true)}
+            >
+              <Text style={styles.filterLabel}>{activeSortLabel}</Text>
+              <Text style={styles.chevron}>⌄</Text>
+            </TouchableOpacity>
+          }
+        >
+          {SORT_OPTIONS.map((item) => (
+            <Menu.Item
+              key={item.value}
+              title={item.label}
+              onPress={() => {
+                setSort(item.value);
+                setMenuVisible(false);
+              }}
+            />
+          ))}
+        </Menu>
+      </View>
 
-              <Text style={styles.detailText}>
-                Industry: {item.industry || "No industry provided"}
-              </Text>
+      {/* Loading */}
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#2E86DE" />
+          <Text style={styles.message}>Loading companies...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={companies}
+          keyExtractor={(item: any) =>
+            item.id?.toString() || item._id?.toString()
+          }
+          renderItem={({ item }: any) => (
+            <Card style={styles.card}>
+              <Card.Content>
+                <Text variant="titleLarge" style={styles.companyName}>
+                  {item.name || item.companyName}
+                </Text>
 
-              <Text style={styles.detailText}>
-                Location: {item.location || "No location provided"}
-              </Text>
+                <Text style={styles.detailText}>
+                  Industry: {item.industry || "N/A"}
+                </Text>
 
-              {item.website ? (
-                <Text style={styles.linkText}>{item.website}</Text>
-              ) : null}
+                <Text style={styles.detailText}>
+                  Location: {item.location || "N/A"}
+                </Text>
+              </Card.Content>
 
-              {item.notes ? (
-                <Text style={styles.notesText}>{item.notes}</Text>
-              ) : null}
-            </Card.Content>
+              <Card.Actions style={styles.actions}>
+                <Button onPress={() => handleEdit(item)}>Edit</Button>
 
-            <Card.Actions style={styles.actions}>
-              <Button
-                mode="contained-tonal"
-                buttonColor="#D6EAF8"
-                textColor="#1565C0"
-                onPress={() => handleEdit(item)}
+                <Button
+                  textColor="red"
+                  onPress={() => handleDelete(item._id || item.id)}
+                >
+                  Delete
+                </Button>
+              </Card.Actions>
+            </Card>
+          )}
+          onEndReached={() => {
+            if (hasMore && !loadingMore) {
+              loadCompanies(page + 1);
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View
+                style={{
+                  paddingVertical: 20,
+                }}
               >
-                Edit
-              </Button>
-
-              <Button
-                mode="contained-tonal"
-                buttonColor="#FDEDEC"
-                textColor="#D32F2F"
-                onPress={() => handleDelete(item._id || item.id)}
-              >
-                Delete
-              </Button>
-            </Card.Actions>
-          </Card>
-        )}
-        ListEmptyComponent={
-          <Text style={styles.message}>No companies found.</Text>
-        }
-      />
+                <ActivityIndicator />
+              </View>
+            ) : null
+          }
+        />
+      )}
     </View>
   );
 }
@@ -175,59 +232,111 @@ export default function CompaniesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 15,
+    padding: 18,
     backgroundColor: "#F4F6F8",
   },
-  heading: {
-    fontWeight: "bold",
-    marginBottom: 16,
+
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
   },
+
+  heading: {
+    fontSize: 30,
+    fontWeight: "800",
+  },
+
+  addButton: {
+    backgroundColor: "#2E86DE",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+
+  addButtonPlus: {
+    color: "#fff",
+    fontSize: 24,
+    marginRight: 6,
+  },
+
+  addButtonLabel: {
+    color: "#fff",
+    fontWeight: "700",
+  },
+
+  searchRow: {
+    flexDirection: "row",
+    marginBottom: 20,
+    gap: 10,
+  },
+
+  searchInput: {
+    flex: 1,
+    height: 50,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    fontSize: 16,
+  },
+
+  filterButton: {
+    height: 50,
+    minWidth: 160,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+  },
+
+  filterLabel: {
+    fontWeight: "600",
+  },
+
+  chevron: {
+    fontSize: 20,
+    color: "#64748B",
+  },
+
+  card: {
+    marginBottom: 15,
+    borderRadius: 16,
+  },
+
+  companyName: {
+    fontWeight: "bold",
+  },
+
+  detailText: {
+    color: "#555",
+    marginTop: 4,
+  },
+
+  actions: {
+    justifyContent: "space-between",
+  },
+
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
-    backgroundColor: "#F4F6F8",
   },
-  addButton: {
-    marginBottom: 20,
-    borderRadius: 10,
-  },
-  card: {
-    marginBottom: 15,
-    borderRadius: 16,
-    backgroundColor: "white",
-    elevation: 3,
-  },
-  companyName: {
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  detailText: {
-    marginBottom: 4,
-    color: "#555",
-  },
-  linkText: {
-    marginTop: 4,
-    color: "#1976D2",
-  },
-  notesText: {
-    marginTop: 8,
-    color: "#777",
-  },
-  actions: {
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-  },
+
   message: {
     marginTop: 10,
-    textAlign: "center",
   },
+
   error: {
-    marginBottom: 20,
-    color: "#D32F2F",
-    textAlign: "center",
-    fontSize: 16,
+    color: "red",
+    marginBottom: 10,
   },
 });
