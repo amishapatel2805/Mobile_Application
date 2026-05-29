@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Text, TextInput } from "react-native-paper";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 import { register } from "../services/authService";
 
@@ -21,56 +22,42 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!name || !email || !password) {
-      Alert.alert(
-        "Missing details",
-        "Please fill all fields."
-      );
+      Alert.alert("Missing details", "Please fill all fields.");
       return;
     }
 
-    const result = await register(
-      name,
-      email,
-      password
-    );
+    const result = await register(name, email, password);
 
     if (!result.success) {
-      Alert.alert(
-        "Registration failed",
-        result.message
-      );
+      Alert.alert("Registration failed", result.message);
       return;
     }
 
-    Alert.alert(
-      "Success",
-      "Account created successfully"
-    );
+    await SecureStore.deleteItemAsync("userName");
+    await SecureStore.deleteItemAsync("userEmail");
+    await SecureStore.deleteItemAsync("token");
 
-    router.replace("/");
+    await SecureStore.setItemAsync("userName", name);
+    await SecureStore.setItemAsync("userEmail", email);
+
+    Alert.alert("Success", "Account created successfully");
+
+    router.replace("/login");
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.wrapper}
-        behavior={
-          Platform.OS === "ios"
-            ? "padding"
-            : undefined
-        }
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.topPanel}>
             <View style={styles.logoBox}>
               <Text style={styles.logoText}>JT</Text>
             </View>
 
-            <Text style={styles.appTitle}>
-              Create Account
-            </Text>
+            <Text style={styles.appTitle}>Create Account</Text>
 
             <Text style={styles.subtitle}>
               Start tracking your applications.
@@ -79,9 +66,7 @@ export default function RegisterScreen() {
 
           <Card style={styles.card}>
             <Card.Content>
-              <Text style={styles.title}>
-                Register
-              </Text>
+              <Text style={styles.title}>Register</Text>
 
               <TextInput
                 label="Full Name"
@@ -89,9 +74,7 @@ export default function RegisterScreen() {
                 onChangeText={setName}
                 mode="outlined"
                 style={styles.input}
-                left={
-                  <TextInput.Icon icon="account-outline" />
-                }
+                left={<TextInput.Icon icon="account-outline" />}
               />
 
               <TextInput
@@ -102,9 +85,7 @@ export default function RegisterScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 style={styles.input}
-                left={
-                  <TextInput.Icon icon="email-outline" />
-                }
+                left={<TextInput.Icon icon="email-outline" />}
               />
 
               <TextInput
@@ -114,9 +95,7 @@ export default function RegisterScreen() {
                 mode="outlined"
                 secureTextEntry
                 style={styles.input}
-                left={
-                  <TextInput.Icon icon="lock-outline" />
-                }
+                left={<TextInput.Icon icon="lock-outline" />}
               />
 
               <Button
@@ -132,9 +111,7 @@ export default function RegisterScreen() {
               <Button
                 mode="text"
                 textColor="#2D8FE3"
-                onPress={() =>
-                  router.replace("/")
-                }
+                onPress={() => router.replace("/login")}
               >
                 Already have an account? Login
               </Button>
@@ -151,20 +128,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F6F8",
   },
-
   wrapper: {
     flex: 1,
     padding: 22,
     justifyContent: "center",
   },
-
   topPanel: {
     backgroundColor: "#285BD6",
     borderRadius: 28,
     padding: 28,
     marginBottom: 22,
   },
-
   logoBox: {
     width: 56,
     height: 56,
@@ -174,44 +148,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 18,
   },
-
   logoText: {
     color: "#285BD6",
     fontSize: 22,
     fontWeight: "bold",
   },
-
   appTitle: {
     color: "white",
     fontSize: 34,
     fontWeight: "bold",
     marginBottom: 8,
   },
-
   subtitle: {
     color: "#EAF1FF",
     fontSize: 15,
   },
-
   card: {
     borderRadius: 24,
     backgroundColor: "white",
     elevation: 5,
     paddingVertical: 8,
   },
-
   title: {
     fontSize: 28,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 24,
   },
-
   input: {
     marginBottom: 14,
     backgroundColor: "white",
   },
-
   registerButton: {
     marginTop: 8,
     marginBottom: 12,

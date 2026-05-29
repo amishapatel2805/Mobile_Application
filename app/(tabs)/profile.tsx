@@ -1,13 +1,26 @@
+import { useState, useCallback } from "react";
 import { View, StyleSheet, Alert } from "react-native";
-import { Card, Text, Button } from "react-native-paper";
+import { Card, Text, Button, Avatar } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 export default function ProfileScreen() {
+  const [userName, setUserName] = useState("User");
+  const [userEmail, setUserEmail] = useState("No email found");
+
+  async function loadUser() {
+    const savedName = await SecureStore.getItemAsync("userName");
+    const savedEmail = await SecureStore.getItemAsync("userEmail");
+
+    setUserName(savedName || "User");
+    setUserEmail(savedEmail || "No email found");
+  }
+
   async function handleLogout() {
     try {
       await SecureStore.deleteItemAsync("token");
       await SecureStore.deleteItemAsync("userEmail");
+      await SecureStore.deleteItemAsync("userName");
 
       router.replace("/login");
     } catch (error) {
@@ -15,17 +28,34 @@ export default function ProfileScreen() {
     }
   }
 
+  useFocusEffect(
+    useCallback(() => {
+      loadUser();
+    }, [])
+  );
+
   return (
     <View style={styles.container}>
       <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.title}>Profile</Text>
+        <Card.Content style={styles.content}>
+          <Avatar.Text
+            size={86}
+            label={userName ? userName.charAt(0).toUpperCase() : "U"}
+            style={styles.avatar}
+            color="white"
+          />
 
-          <Text style={styles.label}>Name</Text>
-          <Text style={styles.value}>User</Text>
+          <Text style={styles.title}>My Profile</Text>
 
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>Logged In User</Text>
+          <View style={styles.infoBox}>
+            <Text style={styles.label}>Name</Text>
+            <Text style={styles.value}>{userName}</Text>
+          </View>
+
+          <View style={styles.infoBox}>
+            <Text style={styles.label}>Email</Text>
+            <Text style={styles.value}>{userEmail}</Text>
+          </View>
 
           <Button
             mode="contained"
@@ -50,29 +80,44 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   card: {
-    borderRadius: 24,
+    borderRadius: 26,
     backgroundColor: "white",
     elevation: 5,
+  },
+  content: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
+  avatar: {
+    backgroundColor: "#1976D2",
+    marginBottom: 18,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 20,
     color: "#111827",
+    marginBottom: 24,
+  },
+  infoBox: {
+    width: "100%",
+    backgroundColor: "#F4F6F8",
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 14,
     color: "#6B7280",
-    marginTop: 10,
+    fontSize: 13,
+    marginBottom: 4,
   },
   value: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 10,
     color: "#111827",
+    fontSize: 16,
+    fontWeight: "600",
   },
   logoutButton: {
-    marginTop: 25,
+    marginTop: 18,
     borderRadius: 12,
+    width: "100%",
   },
 });

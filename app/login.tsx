@@ -22,7 +22,8 @@ export default function LoginScreen() {
       return;
     }
 
-    const result = await login(email, password);
+    const result = await login(email, password); 
+    console.log("LOGIN RESPONSE:", JSON.stringify(result.data, null, 2)); 
 
     if (!result.success) {
       Alert.alert("Login failed", result.message);
@@ -37,8 +38,23 @@ export default function LoginScreen() {
     }
 
     try {
+      const savedName =
+        result.data?.name ||
+        result.data?.user?.name ||
+        email.split("@")[0];
+
+      const savedEmail =
+        result.data?.email ||
+        result.data?.user?.email ||
+        email;
       await SecureStore.setItemAsync("token", token);
       await SecureStore.setItemAsync("userEmail", email);
+      await SecureStore.setItemAsync("userName", result.data.name);
+      
+      console.log("SAVED NAME:", result.data.name);
+      console.log("SAVED EMAIL:", result.data.email);
+      const userName = email.split("@")[0];
+
     } catch (error) {
       Alert.alert("Login failed", "Could not save login token.");
       return;
