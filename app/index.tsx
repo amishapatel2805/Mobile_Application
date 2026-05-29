@@ -38,13 +38,14 @@ export default function LoginScreen() {
 
     try {
       await SecureStore.setItemAsync("token", token);
+    await SecureStore.setItemAsync("userEmail", email);
     } catch (error) {
       console.log("SecureStore error:", error);
       Alert.alert("Login failed", "Could not save login token.");
       return;
     }
 
-    router.replace("/(tabs)/companies");
+    router.replace("/dashboard");
   }
 
   return (

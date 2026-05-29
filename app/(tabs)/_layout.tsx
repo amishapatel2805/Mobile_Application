@@ -6,14 +6,10 @@ export default function TabLayout() {
   return (
     <PaperProvider>
       <Tabs
+        initialRouteName="dashboard"
         screenOptions={{
           tabBarActiveTintColor: "#1976D2",
           tabBarInactiveTintColor: "#6B7280",
-          tabBarStyle: {
-            height: 65,
-            paddingBottom: 8,
-            paddingTop: 6,
-          },
           headerShown: false,
         }}
       >
@@ -73,6 +69,20 @@ export default function TabLayout() {
             tabBarIcon: ({ color, size }) => (
               <MaterialCommunityIcons
                 name="account-tie"
+                color={color}
+                size={size}
+              />
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ color, size }) => (
+              <MaterialCommunityIcons
+                name="account-circle"
                 color={color}
                 size={size}
               />

@@ -20,7 +20,15 @@ export default function InterviewsScreen() {
 
   async function loadInterviews() {
     setLoading(true);
+
     const token = await SecureStore.getItemAsync("token");
+
+    if (!token) {
+      setLoading(false);
+      router.replace("/");
+      return;
+    }
+
     const result = await fetchInterviews(token);
 
     if (result.success) {
@@ -32,11 +40,16 @@ export default function InterviewsScreen() {
 
   function formatDate(dateValue: string) {
     if (!dateValue) return "N/A";
+
     const dateOnly = dateValue.includes("T")
       ? dateValue.split("T")[0]
       : dateValue;
 
-    const [year, month, day] = dateOnly.split("-");
+    const parts = dateOnly.split("-");
+
+    if (parts.length !== 3) return dateValue;
+
+    const [year, month, day] = parts;
     return `${day}/${month}/${year}`;
   }
 
@@ -54,7 +67,20 @@ export default function InterviewsScreen() {
         style: "destructive",
         onPress: async () => {
           const token = await SecureStore.getItemAsync("token");
-          await deleteInterview(id, token);
+
+          if (!token) {
+            router.replace("/");
+            return;
+          }
+
+          const result = await deleteInterview(id, token);
+
+          if (!result.success) {
+            Alert.alert("Error", result.message);
+            return;
+          }
+
+          Alert.alert("Success", "Interview deleted");
           loadInterviews();
         },
       },

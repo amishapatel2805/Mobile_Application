@@ -15,6 +15,11 @@ export default function DashboardScreen() {
     setLoading(true);
 
     const token = await SecureStore.getItemAsync("token");
+    if (!token) {
+      setLoading(false);
+      router.replace("/");
+      return;
+  }
 
     const applicationsResult = await fetchApplications(token);
     const interviewsResult = await fetchInterviews(token);

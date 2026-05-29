@@ -24,6 +24,10 @@ export default function ApplicationsScreen() {
     setErrorMessage("");
 
     const token = await SecureStore.getItemAsync("token");
+    if (!token) {
+      router.replace("/");
+      return;
+    }
     const result = await fetchApplications(token);
 
     if (!result.success) {

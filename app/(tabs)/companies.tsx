@@ -39,6 +39,11 @@ export default function CompaniesScreen() {
       setLoadingMore(true);
     }
     const token = await SecureStore.getItemAsync("token");
+
+    if (!token) {
+      router.replace("/");
+      return;
+    }
     const result = await fetchCompanies(token, pageNumber, search, sort);
     if (!result.success) {
       setErrorMessage(result.message);
