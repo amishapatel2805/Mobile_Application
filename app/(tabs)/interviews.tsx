@@ -148,13 +148,19 @@ export default function InterviewsScreen() {
       <TextInput
         label="Search interviews"
         value={search}
-        onChangeText={(text) => {
-          setSearch(text);
-          setVisibleCount(5);
-        }}
+        onChangeText={setSearch}
         mode="outlined"
         left={<TextInput.Icon icon="magnify" />}
         style={styles.searchInput}
+        textColor="#111827"
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        theme={{
+          colors: {
+            onSurface: "#111827",
+            onSurfaceVariant: "#6B7280",
+          },
+        }}
       />
 
       <View style={styles.topActions}>
@@ -175,6 +181,11 @@ export default function InterviewsScreen() {
             <Button
               mode="outlined"
               style={styles.sortButton}
+              labelStyle={{
+                color: "#111827",
+                fontSize: 16,
+                textAlign: "center",
+              }}
               onPress={() => setSortMenuVisible(true)}
             >
               Sort: {sortOption}
@@ -312,7 +323,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     marginBottom: 14,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
+    color: "#111827",
   },
   topActions: {
     marginBottom: 18,
@@ -323,7 +335,8 @@ const styles = StyleSheet.create({
   },
   sortButton: {
     borderRadius: 10,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
   },
   card: {
     marginBottom: 15,

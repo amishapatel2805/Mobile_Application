@@ -22,8 +22,9 @@ export default function LoginScreen() {
       return;
     }
 
-    const result = await login(email, password); 
-    console.log("LOGIN RESPONSE:", JSON.stringify(result.data, null, 2)); 
+    const result = await login(email, password);
+
+    console.log("LOGIN RESPONSE:", JSON.stringify(result.data, null, 2));
 
     if (!result.success) {
       Alert.alert("Login failed", result.message);
@@ -47,14 +48,13 @@ export default function LoginScreen() {
         result.data?.email ||
         result.data?.user?.email ||
         email;
-      await SecureStore.setItemAsync("token", token);
-      await SecureStore.setItemAsync("userEmail", email);
-      await SecureStore.setItemAsync("userName", result.data.name);
-      
-      console.log("SAVED NAME:", result.data.name);
-      console.log("SAVED EMAIL:", result.data.email);
-      const userName = email.split("@")[0];
 
+      await SecureStore.setItemAsync("token", token);
+      await SecureStore.setItemAsync("userEmail", savedEmail);
+      await SecureStore.setItemAsync("userName", savedName);
+
+      console.log("SAVED NAME:", savedName);
+      console.log("SAVED EMAIL:", savedEmail);
     } catch (error) {
       Alert.alert("Login failed", "Could not save login token.");
       return;
@@ -93,7 +93,20 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
-              left={<TextInput.Icon icon="email-outline" />}
+              outlineColor="#CBD5E1"
+              activeOutlineColor="#285BD6"
+              textColor="#0F172A"
+              theme={{
+                colors: {
+                  onSurfaceVariant: "#1E293B",
+                },
+              }}
+              left={
+                <TextInput.Icon
+                  icon="email-outline"
+                  color="#1E293B"
+                />
+              }
             />
 
             <TextInput
@@ -103,7 +116,20 @@ export default function LoginScreen() {
               mode="outlined"
               secureTextEntry
               style={styles.input}
-              left={<TextInput.Icon icon="lock-outline" />}
+              outlineColor="#CBD5E1"
+              activeOutlineColor="#285BD6"
+              textColor="#0F172A"
+              theme={{
+                colors: {
+                  onSurfaceVariant: "#1E293B",
+                },
+              }}
+              left={
+                <TextInput.Icon
+                  icon="lock-outline"
+                  color="#1E293B"
+                />
+              }
             />
 
             <Button
@@ -135,17 +161,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F6F8",
   },
+
   wrapper: {
     flex: 1,
     padding: 22,
     justifyContent: "center",
   },
+
   topPanel: {
     backgroundColor: "#285BD6",
     borderRadius: 28,
     padding: 28,
     marginBottom: 22,
   },
+
   logoBox: {
     width: 56,
     height: 56,
@@ -155,40 +184,49 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 18,
   },
+
   logoText: {
     color: "#285BD6",
     fontSize: 22,
     fontWeight: "bold",
   },
+
   appTitle: {
     color: "white",
     fontSize: 34,
     fontWeight: "bold",
     marginBottom: 8,
   },
+
   subtitle: {
     color: "#EAF1FF",
     fontSize: 15,
   },
+
   card: {
     borderRadius: 24,
     backgroundColor: "white",
     elevation: 5,
     paddingVertical: 8,
   },
+
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: 30,
+    fontWeight: "800",
     textAlign: "center",
     marginBottom: 24,
+    color: "#0F172A",
   },
+
   input: {
     marginBottom: 14,
     backgroundColor: "white",
   },
+
   loginButton: {
     marginTop: 8,
     marginBottom: 12,
     borderRadius: 12,
+    paddingVertical: 4,
   },
 });

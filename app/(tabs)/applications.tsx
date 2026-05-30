@@ -15,7 +15,7 @@ import {
 } from "../../services/applicationService";
 
 export default function ApplicationsScreen() {
-  const [applications, setApplications] = useState([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -66,6 +66,46 @@ export default function ApplicationsScreen() {
     }
 
     return dateValue;
+  }
+
+  function getStatusStyle(status: string) {
+    switch ((status || "").toLowerCase()) {
+      case "applied":
+        return {
+          backgroundColor: "#DBEAFE",
+          color: "#2563EB",
+        };
+
+      case "interview scheduled":
+        return {
+          backgroundColor: "#FEF3C7",
+          color: "#D97706",
+        };
+
+      case "rejected":
+        return {
+          backgroundColor: "#FEE2E2",
+          color: "#DC2626",
+        };
+
+      case "under review":
+        return {
+          backgroundColor: "#CFFAFE",
+          color: "#0891B2",
+        };
+
+      case "offered":
+        return {
+          backgroundColor: "#DCFCE7",
+          color: "#16A34A",
+        };
+
+      default:
+        return {
+          backgroundColor: "#E5E7EB",
+          color: "#374151",
+        };
+    }
   }
 
   async function handleDelete(id: string) {
@@ -184,6 +224,15 @@ export default function ApplicationsScreen() {
         mode="outlined"
         left={<TextInput.Icon icon="magnify" />}
         style={styles.searchInput}
+        textColor="#111827"
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        theme={{
+          colors: {
+            onSurface: "#111827",
+            onSurfaceVariant: "#6B7280",
+          },
+        }}
       />
 
       <View style={styles.topActions}>
@@ -204,6 +253,7 @@ export default function ApplicationsScreen() {
             <Button
               mode="outlined"
               style={styles.sortButton}
+              labelStyle={styles.sortButtonLabel}
               onPress={() => setSortMenuVisible(true)}
             >
               Sort: {sortOption}
@@ -235,6 +285,7 @@ export default function ApplicationsScreen() {
         keyExtractor={(item: any) => item._id || item.id}
         onEndReached={loadMoreApplications}
         onEndReachedThreshold={0.4}
+        keyboardShouldPersistTaps="handled"
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.loaderBox}>
@@ -245,64 +296,85 @@ export default function ApplicationsScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }: any) => (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text style={styles.title}>
-                {item.roleTitle || "Untitled Role"}
-              </Text>
+        renderItem={({ item }: any) => {
+          const statusStyle = getStatusStyle(item.status || "Applied");
 
-              <Text style={styles.label}>Company</Text>
-              <Text style={styles.value}>
-                {item.company?.name || item.companyName || "N/A"}
-              </Text>
+          return (
+            <Card style={styles.card}>
+              <Card.Content>
+                <Text style={styles.title}>
+                  {item.roleTitle || "Untitled Role"}
+                </Text>
 
-              <Text style={styles.label}>Status</Text>
-              <Text style={styles.value}>{item.status || "Applied"}</Text>
+                <Text style={styles.label}>Company</Text>
+                <Text style={styles.value}>
+                  {item.company?.name || item.companyName || "N/A"}
+                </Text>
 
-              <Text style={styles.label}>Application Date</Text>
-              <Text style={styles.value}>
-                {formatDate(item.applicationDate)}
-              </Text>
+                <View style={styles.statusRow}>
+                  <Text style={styles.label}>Status: </Text>
 
-              {item.salaryExpectation ? (
-                <>
-                  
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      { backgroundColor: statusStyle.backgroundColor },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusText,
+                        { color: statusStyle.color },
+                      ]}
+                    >
+                      {(item.status || "Applied").toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.label}>Application Date</Text>
+                <Text style={styles.value}>
+                  {formatDate(item.applicationDate)}
+                </Text>
+
+                {item.salaryExpectation ? (
+                 <>
+                  <Text style={styles.label}>Salary Expectation</Text>
                   <Text style={styles.value}>{item.salaryExpectation}</Text>
                 </>
               ) : null}
 
-              {item.notes ? (
-                <>
-                  <Text style={styles.label}>Notes</Text>
-                  <Text style={styles.notes}>{item.notes}</Text>
-                </>
-              ) : null}
-            </Card.Content>
+                {item.notes ? (
+                  <>
+                    <Text style={styles.label}>Notes</Text>
+                    <Text style={styles.notes}>{item.notes}</Text>
+                  </>
+                ) : null}
+              </Card.Content>
 
-            <Card.Actions style={styles.actions}>
-              <Button
-                mode="contained"
-                buttonColor="#2D8FE3"
-                textColor="white"
-                style={styles.actionButton}
-                onPress={() => handleEdit(item)}
-              >
-                Edit
-              </Button>
+              <Card.Actions style={styles.actions}>
+                <Button
+                  mode="contained"
+                  buttonColor="#2D8FE3"
+                  textColor="white"
+                  style={styles.actionButton}
+                  onPress={() => handleEdit(item)}
+                >
+                  Edit
+                </Button>
 
-              <Button
-                mode="contained"
-                buttonColor="#EF4444"
-                textColor="white"
-                style={styles.actionButton}
-                onPress={() => handleDelete(item._id || item.id)}
-              >
-                Delete
-              </Button>
-            </Card.Actions>
-          </Card>
-        )}
+                <Button
+                  mode="contained"
+                  buttonColor="#EF4444"
+                  textColor="white"
+                  style={styles.actionButton}
+                  onPress={() => handleDelete(item._id || item.id)}
+                >
+                  Delete
+                </Button>
+              </Card.Actions>
+            </Card>
+          );
+        }}
         ListEmptyComponent={
           <Text style={styles.message}>No applications found.</Text>
         }
@@ -325,7 +397,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     marginBottom: 14,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
+    color: "#111827",
   },
   topActions: {
     marginBottom: 18,
@@ -334,9 +407,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 10,
   },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    marginBottom: 8,
+  },
   sortButton: {
-    borderRadius: 12,
-    backgroundColor: "white",
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+  },
+  sortButtonLabel: {
+    color: "#111827",
+    fontSize: 16,
+    textAlign: "center",
   },
   card: {
     marginBottom: 16,
@@ -361,6 +446,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#475569",
     marginBottom: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   notes: {
     fontSize: 15,

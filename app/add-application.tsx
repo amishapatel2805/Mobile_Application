@@ -86,7 +86,7 @@ export default function AddApplicationScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.heading}>Application</Text>
+      <Text style={styles.heading}>Add Application</Text>
 
       <TextInput
         label="Role *"
@@ -177,21 +177,25 @@ export default function AddApplicationScreen() {
           ) : null}
         </View>
       )}
+      
+        <Text style={styles.label}>Salary Expectation</Text>
 
-      <TextInput
-        label="Salary Expectation"
-        value={salaryExpectation}
-        onChangeText={setSalaryExpectation}
-        mode="outlined"
-        style={styles.input}
-        textColor="#111827"
-        theme={{
-          colors: {
-            onSurface: "#111827",
-            onSurfaceVariant: "#111827",
-          },
-        }}
-      />
+          <TextInput
+            label="Salary Expectation"
+            value={salaryExpectation}
+            onChangeText={setSalaryExpectation}
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#D1D5DB"
+            activeOutlineColor="#1976D2"
+            textColor="#111827"
+            theme={{
+              colors: {
+                onSurface: "#111827",
+                onSurfaceVariant: "#111827",
+              },
+            }}
+          />
 
       <Text style={styles.label}>Company</Text>
       <Menu

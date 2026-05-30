@@ -1,6 +1,6 @@
-import { View, StyleSheet, Alert } from "react-native";
-import { TextInput, Button, Text } from "react-native-paper";
 import { useState } from "react";
+import { StyleSheet, Alert, ScrollView } from "react-native";
+import { TextInput, Button, Text } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { updateCompany } from "../services/companyService";
@@ -18,8 +18,8 @@ export default function EditCompanyScreen() {
   async function handleUpdate() {
     if (!name || !industry || !location) {
       Alert.alert(
-        "Error",
-        "Please enter company name, industry and location"
+        "Missing details",
+        "Please enter company name, industry and location."
       );
       return;
     }
@@ -27,6 +27,12 @@ export default function EditCompanyScreen() {
     setLoading(true);
 
     const token = await SecureStore.getItemAsync("token");
+
+    if (!token) {
+      setLoading(false);
+      router.replace("/login");
+      return;
+    }
 
     const result = await updateCompany(
       String(params.id),
@@ -52,33 +58,47 @@ export default function EditCompanyScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text variant="headlineMedium" style={styles.title}>
-        Edit Company
-      </Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.heading}>Edit Company</Text>
 
       <TextInput
-        label="Company Name"
+        label="Name *"
         value={name}
         onChangeText={setName}
         mode="outlined"
         style={styles.input}
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        textColor="#111827"
+        theme={inputTheme}
       />
 
       <TextInput
-        label="Industry"
+        label="Industry *"
         value={industry}
         onChangeText={setIndustry}
         mode="outlined"
         style={styles.input}
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        textColor="#111827"
+        theme={inputTheme}
       />
 
       <TextInput
-        label="Location"
+        label="Location *"
         value={location}
         onChangeText={setLocation}
         mode="outlined"
         style={styles.input}
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        textColor="#111827"
+        theme={inputTheme}
       />
 
       <TextInput
@@ -87,6 +107,12 @@ export default function EditCompanyScreen() {
         onChangeText={setWebsite}
         mode="outlined"
         style={styles.input}
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        textColor="#111827"
+        autoCapitalize="none"
+        keyboardType="url"
+        theme={inputTheme}
       />
 
       <TextInput
@@ -96,27 +122,65 @@ export default function EditCompanyScreen() {
         mode="outlined"
         multiline
         numberOfLines={4}
-        style={styles.input}
+        style={styles.notes}
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        textColor="#111827"
+        theme={inputTheme}
       />
 
-      <Button mode="contained" onPress={handleUpdate} loading={loading}>
-        Update Company
+      <Button
+        mode="contained"
+        buttonColor="#1976D2"
+        textColor="white"
+        style={styles.saveButton}
+        contentStyle={styles.saveButtonContent}
+        onPress={handleUpdate}
+        loading={loading}
+        disabled={loading}
+      >
+        Update
       </Button>
-    </View>
+    </ScrollView>
   );
 }
+
+const inputTheme = {
+  colors: {
+    onSurface: "#111827",
+    onSurfaceVariant: "#6B7280",
+  },
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#FFFFFF",
   },
-  title: {
-    marginBottom: 20,
-    fontWeight: "bold",
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 24,
   },
   input: {
-    marginBottom: 15,
+    backgroundColor: "#FFFFFF",
+    marginBottom: 16,
+  },
+  notes: {
+    backgroundColor: "#FFFFFF",
+    minHeight: 90,
+    marginBottom: 22,
+  },
+  saveButton: {
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  saveButtonContent: {
+    height: 52,
   },
 });

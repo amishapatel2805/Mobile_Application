@@ -209,6 +209,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 14,
+    color: "#0F172A"
   },
   tableHeader: {
     flexDirection: "row",

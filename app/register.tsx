@@ -51,7 +51,10 @@ export default function RegisterScreen() {
         style={styles.wrapper}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           <View style={styles.topPanel}>
             <View style={styles.logoBox}>
               <Text style={styles.logoText}>JT</Text>
@@ -74,7 +77,20 @@ export default function RegisterScreen() {
                 onChangeText={setName}
                 mode="outlined"
                 style={styles.input}
-                left={<TextInput.Icon icon="account-outline" />}
+                outlineColor="#CBD5E1"
+                activeOutlineColor="#285BD6"
+                textColor="#0F172A"
+                theme={{
+                  colors: {
+                    onSurfaceVariant: "#1E293B",
+                  },
+                }}
+                left={
+                  <TextInput.Icon
+                    icon="account-outline"
+                    color="#1E293B"
+                  />
+                }
               />
 
               <TextInput
@@ -85,7 +101,20 @@ export default function RegisterScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 style={styles.input}
-                left={<TextInput.Icon icon="email-outline" />}
+                outlineColor="#CBD5E1"
+                activeOutlineColor="#285BD6"
+                textColor="#0F172A"
+                theme={{
+                  colors: {
+                    onSurfaceVariant: "#1E293B",
+                  },
+                }}
+                left={
+                  <TextInput.Icon
+                    icon="email-outline"
+                    color="#1E293B"
+                  />
+                }
               />
 
               <TextInput
@@ -95,7 +124,20 @@ export default function RegisterScreen() {
                 mode="outlined"
                 secureTextEntry
                 style={styles.input}
-                left={<TextInput.Icon icon="lock-outline" />}
+                outlineColor="#CBD5E1"
+                activeOutlineColor="#285BD6"
+                textColor="#0F172A"
+                theme={{
+                  colors: {
+                    onSurfaceVariant: "#1E293B",
+                  },
+                }}
+                left={
+                  <TextInput.Icon
+                    icon="lock-outline"
+                    color="#1E293B"
+                  />
+                }
               />
 
               <Button
@@ -131,6 +173,9 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
     padding: 22,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "center",
   },
   topPanel: {
@@ -170,10 +215,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: 30,
+    fontWeight: "800",
     textAlign: "center",
     marginBottom: 24,
+    color: "#0F172A",
   },
   input: {
     marginBottom: 14,
@@ -183,5 +229,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 12,
     borderRadius: 12,
+    paddingVertical: 4,
   },
 });
