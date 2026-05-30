@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
 import {
   View,
-  FlatList,
   StyleSheet,
-  ActivityIndicator,
+  FlatList,
   Alert,
+  Share,
+  ActivityIndicator,
 } from "react-native";
 import { Card, Text, Button, TextInput, Menu } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
+
 import {
   fetchApplications,
   deleteApplication,
 } from "../../services/applicationService";
+
+import { scheduleApplicationReminder } from "../../services/notificationService";
 
 export default function ApplicationsScreen() {
   const [applications, setApplications] = useState<any[]>([]);
@@ -51,6 +55,25 @@ export default function ApplicationsScreen() {
     setLoading(false);
   }
 
+  async function shareApplication(application: any) {
+    const companyName =
+      application.company?.name || application.companyName || "N/A";
+
+    await Share.share({
+      title: "Job Application",
+      message:
+        `Job Application Details\n\n` +
+        `Role: ${application.roleTitle || "Untitled Role"}\n` +
+        `Company: ${companyName}\n` +
+        `Status: ${application.status || "Applied"}\n` +
+        `Application Date: ${formatDate(application.applicationDate)}\n` +
+        `Salary Expectation: ${
+          application.salaryExpectation || "Not added"
+        }\n` +
+        `Notes: ${application.notes || "No notes added"}`,
+    });
+  }
+
   function formatDate(dateValue: string) {
     if (!dateValue) return "N/A";
 
@@ -71,40 +94,17 @@ export default function ApplicationsScreen() {
   function getStatusStyle(status: string) {
     switch ((status || "").toLowerCase()) {
       case "applied":
-        return {
-          backgroundColor: "#DBEAFE",
-          color: "#2563EB",
-        };
-
+        return { backgroundColor: "#DBEAFE", color: "#2563EB" };
       case "interview scheduled":
-        return {
-          backgroundColor: "#FEF3C7",
-          color: "#D97706",
-        };
-
+        return { backgroundColor: "#FEF3C7", color: "#D97706" };
       case "rejected":
-        return {
-          backgroundColor: "#FEE2E2",
-          color: "#DC2626",
-        };
-
+        return { backgroundColor: "#FEE2E2", color: "#DC2626" };
       case "under review":
-        return {
-          backgroundColor: "#CFFAFE",
-          color: "#0891B2",
-        };
-
+        return { backgroundColor: "#CFFAFE", color: "#0891B2" };
       case "offered":
-        return {
-          backgroundColor: "#DCFCE7",
-          color: "#16A34A",
-        };
-
+        return { backgroundColor: "#DCFCE7", color: "#16A34A" };
       default:
-        return {
-          backgroundColor: "#E5E7EB",
-          color: "#374151",
-        };
+        return { backgroundColor: "#E5E7EB", color: "#374151" };
     }
   }
 
@@ -174,9 +174,7 @@ export default function ApplicationsScreen() {
   const visibleApplications = filteredApplications.slice(0, visibleCount);
 
   function loadMoreApplications() {
-    if (loadingMore || visibleCount >= filteredApplications.length) {
-      return;
-    }
+    if (loadingMore || visibleCount >= filteredApplications.length) return;
 
     setLoadingMore(true);
 
@@ -298,6 +296,7 @@ export default function ApplicationsScreen() {
         }
         renderItem={({ item }: any) => {
           const statusStyle = getStatusStyle(item.status || "Applied");
+          const companyName = item.company?.name || item.companyName || "N/A";
 
           return (
             <Card style={styles.card}>
@@ -307,9 +306,7 @@ export default function ApplicationsScreen() {
                 </Text>
 
                 <Text style={styles.label}>Company</Text>
-                <Text style={styles.value}>
-                  {item.company?.name || item.companyName || "N/A"}
-                </Text>
+                <Text style={styles.value}>{companyName}</Text>
 
                 <View style={styles.statusRow}>
                   <Text style={styles.label}>Status: </Text>
@@ -337,11 +334,13 @@ export default function ApplicationsScreen() {
                 </Text>
 
                 {item.salaryExpectation ? (
-                 <>
-                  <Text style={styles.label}>Salary Expectation</Text>
-                  <Text style={styles.value}>{item.salaryExpectation}</Text>
-                </>
-              ) : null}
+                  <>
+                    <Text style={styles.label}>Salary Expectation</Text>
+                    <Text style={styles.value}>
+                      {item.salaryExpectation}
+                    </Text>
+                  </>
+                ) : null}
 
                 {item.notes ? (
                   <>
@@ -372,6 +371,33 @@ export default function ApplicationsScreen() {
                   Delete
                 </Button>
               </Card.Actions>
+
+              <Card.Actions style={styles.actions}>
+                <Button
+                  mode="outlined"
+                  icon="share-variant"
+                  textColor="#1976D2"
+                  style={styles.actionButton}
+                  onPress={() => shareApplication(item)}
+                >
+                  Share
+                </Button>
+
+                <Button
+                  mode="outlined"
+                  icon="bell-outline"
+                  textColor="#1976D2"
+                  style={styles.actionButton}
+                  onPress={() =>
+                    scheduleApplicationReminder(
+                      companyName,
+                      item.roleTitle || "Untitled Role"
+                    )
+                  }
+                >
+                  Reminder
+                </Button>
+              </Card.Actions>
             </Card>
           );
         }}
@@ -398,7 +424,6 @@ const styles = StyleSheet.create({
   searchInput: {
     marginBottom: 14,
     backgroundColor: "#FFFFFF",
-    color: "#111827",
   },
   topActions: {
     marginBottom: 18,
