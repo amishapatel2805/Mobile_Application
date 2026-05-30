@@ -4,13 +4,16 @@ export async function fetchCompanies(
   token,
   page = 1,
   search = "",
-  sort = "oldest"
+  sort = "newest",
+  limit = 5
 ) {
   const query = new URLSearchParams({
     search,
     sort,
     page: page.toString(),
+    limit: limit.toString(),
   }).toString();
+
   return await apiRequest(`/api/companies?${query}`, "GET", null, token);
 }
 

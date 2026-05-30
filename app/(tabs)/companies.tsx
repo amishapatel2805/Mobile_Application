@@ -15,72 +15,128 @@ import {
 } from "../../services/companyService";
 
 export default function CompaniesScreen() {
-  const [companies, setCompanies] = useState([]);
+  const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [sortOption, setSortOption] = useState("Newest");
+  const [sortOption, setSortOption] = useState("newest");
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const [visibleCount, setVisibleCount] = useState(5);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const itemsPerPage = 5;
+  const limit = 5;
 
-  async function loadCompanies() {
-    setLoading(true);
+  function sortCompanies(data: any[]) {
+    const sorted = [...data];
+
+    if (sortOption === "A-Z") {
+      return sorted.sort((a, b) =>
+        (a.name || a.companyName || "").localeCompare(
+          b.name || b.companyName || ""
+        )
+      );
+    }
+
+    if (sortOption === "Z-A") {
+      return sorted.sort((a, b) =>
+        (b.name || b.companyName || "").localeCompare(
+          a.name || a.companyName || ""
+        )
+      );
+    }
+
+    return sorted;
+  }
+
+  async function loadCompanies(pageNumber = 1, reset = true) {
+    if (reset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
     setErrorMessage("");
 
     const token = await SecureStore.getItemAsync("token");
 
     if (!token) {
       setLoading(false);
+      setLoadingMore(false);
       router.replace("/login");
       return;
     }
 
-    const result = await fetchCompanies(token);
+    const apiSort =
+      sortOption === "A-Z" || sortOption === "Z-A"
+        ? "newest"
+        : sortOption;
+
+    const result = await fetchCompanies(
+      token,
+      pageNumber,
+      search,
+      apiSort,
+      limit
+    );
 
     if (!result.success) {
       setErrorMessage(result.message);
-      setCompanies([]);
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
 
-    setCompanies(result.data || []);
+    const newCompanies = sortCompanies(result.data || []);
+
+    if (reset) {
+      setCompanies(newCompanies);
+    } else {
+      setCompanies((prev: any[]) => sortCompanies([...prev, ...newCompanies]));
+    }
+
+    setHasMore(newCompanies.length === limit);
+    setPage(pageNumber);
     setLoading(false);
+    setLoadingMore(false);
+  }
+
+  function loadMoreCompanies() {
+    if (loadingMore || !hasMore || loading) return;
+
+    setLoadingMore(true);
+
+    setTimeout(() => {
+      loadCompanies(page + 1, false);
+    }, 1500);
   }
 
   async function handleDelete(id: string) {
-    Alert.alert(
-      "Delete Company",
-      "Are you sure you want to delete this company?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const token = await SecureStore.getItemAsync("token");
+    Alert.alert("Delete Company", "Are you sure you want to delete this company?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          const token = await SecureStore.getItemAsync("token");
 
-            if (!token) {
-              router.replace("/login");
-              return;
-            }
+          if (!token) {
+            router.replace("/login");
+            return;
+          }
 
-            const result = await deleteCompany(id, token);
+          const result = await deleteCompany(id, token);
 
-            if (!result.success) {
-              Alert.alert("Error", result.message);
-              return;
-            }
+          if (!result.success) {
+            Alert.alert("Error", result.message);
+            return;
+          }
 
-            Alert.alert("Success", "Company deleted successfully");
-            loadCompanies();
-          },
+          Alert.alert("Success", "Company deleted successfully");
+          loadCompanies(1, true);
         },
-      ]
-    );
+      },
+    ]);
   }
 
   function handleEdit(item: any) {
@@ -97,58 +153,11 @@ export default function CompaniesScreen() {
     });
   }
 
-  const filteredCompanies = companies
-    .filter((item: any) => {
-      const text = `${item.name || ""} ${item.companyName || ""} ${
-        item.industry || ""
-      } ${item.location || ""}`.toLowerCase();
-
-      return text.includes(search.toLowerCase());
-    })
-    .sort((a: any, b: any) => {
-      if (sortOption === "A-Z") {
-        return (a.name || a.companyName || "").localeCompare(
-          b.name || b.companyName || ""
-        );
-      }
-
-      if (sortOption === "Z-A") {
-        return (b.name || b.companyName || "").localeCompare(
-          a.name || a.companyName || ""
-        );
-      }
-
-      if (sortOption === "Oldest") {
-        return (
-          new Date(a.createdAt || 0).getTime() -
-          new Date(b.createdAt || 0).getTime()
-        );
-      }
-
-      return (
-        new Date(b.createdAt || 0).getTime() -
-        new Date(a.createdAt || 0).getTime()
-      );
-    });
-
-  const paginatedCompanies = filteredCompanies.slice(0, visibleCount);
-
-  function loadMoreCompanies() {
-    if (visibleCount >= filteredCompanies.length || loadingMore) {
-      return;
-    }
-
-    setLoadingMore(true);
-
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + itemsPerPage);
-      setLoadingMore(false);
-    }, 700);
-  }
-
   useEffect(() => {
-    loadCompanies();
-  }, []);
+    setPage(1);
+    setHasMore(true);
+    loadCompanies(1, true);
+  }, [search, sortOption]);
 
   if (loading) {
     return (
@@ -163,8 +172,7 @@ export default function CompaniesScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>{errorMessage}</Text>
-
-        <Button mode="contained" onPress={loadCompanies}>
+        <Button mode="contained" onPress={() => loadCompanies(1, true)}>
           Retry
         </Button>
       </View>
@@ -178,10 +186,7 @@ export default function CompaniesScreen() {
       <TextInput
         label="Search companies"
         value={search}
-        onChangeText={(text) => {
-          setSearch(text);
-          setVisibleCount(5);
-        }}
+        onChangeText={setSearch}
         mode="outlined"
         left={<TextInput.Icon icon="magnify" />}
         style={styles.searchInput}
@@ -211,13 +216,12 @@ export default function CompaniesScreen() {
             </Button>
           }
         >
-          {["Newest", "Oldest", "A-Z", "Z-A"].map((option) => (
+          {["newest", "oldest", "A-Z", "Z-A"].map((option) => (
             <Menu.Item
               key={option}
               title={option}
               onPress={() => {
                 setSortOption(option);
-                setVisibleCount(5);
                 setSortMenuVisible(false);
               }}
             />
@@ -226,13 +230,16 @@ export default function CompaniesScreen() {
       </View>
 
       <FlatList
-        data={paginatedCompanies}
+        data={companies}
         keyExtractor={(item: any) => item._id || item.id}
         onEndReached={loadMoreCompanies}
         onEndReachedThreshold={0.4}
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator size="small" style={styles.footerLoader} />
+            <View style={styles.loaderBox}>
+              <ActivityIndicator size="large" color="#1976D2" />
+              <Text style={styles.loadingText}>Loading more companies...</Text>
+            </View>
           ) : null
         }
         renderItem={({ item }: any) => (
@@ -368,8 +375,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     minWidth: 110,
   },
-  footerLoader: {
-    marginVertical: 20,
+  loaderBox: {
+    paddingVertical: 24,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 8,
+    color: "#6B7280",
+    fontSize: 14,
   },
   center: {
     flex: 1,
