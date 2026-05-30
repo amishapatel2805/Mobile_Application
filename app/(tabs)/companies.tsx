@@ -75,7 +75,7 @@ export default function CompaniesScreen() {
     const result = await fetchCompanies(
       token,
       pageNumber,
-      search,
+      "",
       apiSort,
       limit
     );
@@ -102,7 +102,7 @@ export default function CompaniesScreen() {
   }
 
   function loadMoreCompanies() {
-    if (loadingMore || !hasMore || loading) return;
+    if (loadingMore || !hasMore || loading || search.trim() !== "") return;
 
     setLoadingMore(true);
 
@@ -153,11 +153,23 @@ export default function CompaniesScreen() {
     });
   }
 
+  const filteredCompanies = sortCompanies(
+    companies.filter((item: any) => {
+      const text = `${item.name || ""} ${item.companyName || ""} ${
+        item.industry || ""
+      } ${item.location || ""} ${item.website || ""} ${
+        item.notes || ""
+      }`.toLowerCase();
+
+      return text.includes(search.toLowerCase());
+    })
+  );
+
   useEffect(() => {
     setPage(1);
     setHasMore(true);
     loadCompanies(1, true);
-  }, [search, sortOption]);
+  }, [sortOption]);
 
   if (loading) {
     return (
@@ -190,6 +202,15 @@ export default function CompaniesScreen() {
         mode="outlined"
         left={<TextInput.Icon icon="magnify" />}
         style={styles.searchInput}
+        textColor="#111827"
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        theme={{
+          colors: {
+            onSurface: "#111827",
+            onSurfaceVariant: "#6B7280",
+          },
+        }}
       />
 
       <View style={styles.topActions}>
@@ -210,6 +231,7 @@ export default function CompaniesScreen() {
             <Button
               mode="outlined"
               style={styles.sortButton}
+              labelStyle={styles.sortButtonLabel}
               onPress={() => setSortMenuVisible(true)}
             >
               Sort: {sortOption}
@@ -230,10 +252,11 @@ export default function CompaniesScreen() {
       </View>
 
       <FlatList
-        data={companies}
+        data={filteredCompanies}
         keyExtractor={(item: any) => item._id || item.id}
         onEndReached={loadMoreCompanies}
         onEndReachedThreshold={0.4}
+        keyboardShouldPersistTaps="handled"
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.loaderBox}>
@@ -306,11 +329,7 @@ export default function CompaniesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: "#F4F6F8",
-  },
+  container: { flex: 1, padding: 16, backgroundColor: "#F4F6F8" },
   heading: {
     fontSize: 32,
     fontWeight: "bold",
@@ -319,18 +338,20 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     marginBottom: 14,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
+    color: "#111827",
   },
-  topActions: {
-    marginBottom: 18,
-  },
-  addButton: {
-    borderRadius: 12,
-    marginBottom: 10,
-  },
+  topActions: { marginBottom: 18 },
+  addButton: { borderRadius: 12, marginBottom: 10 },
   sortButton: {
     borderRadius: 12,
-    backgroundColor: "white",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+  },
+  sortButtonLabel: {
+    color: "#111827",
+    fontSize: 15,
+    textAlign: "center",
   },
   companyCard: {
     marginBottom: 16,
@@ -356,45 +377,23 @@ const styles = StyleSheet.create({
     color: "#475569",
     marginBottom: 6,
   },
-  website: {
-    fontSize: 15,
-    color: "#2563EB",
-    marginBottom: 10,
-  },
-  notes: {
-    fontSize: 15,
-    color: "#64748B",
-    marginTop: 6,
-  },
+  website: { fontSize: 15, color: "#2563EB", marginBottom: 10 },
+  notes: { fontSize: 15, color: "#64748B", marginTop: 6 },
   cardActions: {
     justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingBottom: 12,
   },
-  actionButton: {
-    borderRadius: 10,
-    minWidth: 110,
-  },
-  loaderBox: {
-    paddingVertical: 24,
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 8,
-    color: "#6B7280",
-    fontSize: 14,
-  },
+  actionButton: { borderRadius: 10, minWidth: 110 },
+  loaderBox: { paddingVertical: 24, alignItems: "center" },
+  loadingText: { marginTop: 8, color: "#6B7280", fontSize: 14 },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#F4F6F8",
   },
-  message: {
-    textAlign: "center",
-    marginTop: 20,
-    color: "#6B7280",
-  },
+  message: { textAlign: "center", marginTop: 20, color: "#6B7280" },
   error: {
     marginBottom: 20,
     color: "#EF4444",

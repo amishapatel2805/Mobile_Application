@@ -267,7 +267,7 @@ export default function ApplicationsScreen() {
 
               {item.salaryExpectation ? (
                 <>
-                  <Text style={styles.label}>Salary Expectation</Text>
+                  
                   <Text style={styles.value}>{item.salaryExpectation}</Text>
                 </>
               ) : null}

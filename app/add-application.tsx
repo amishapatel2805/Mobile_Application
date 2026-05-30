@@ -1,73 +1,71 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Alert, ScrollView } from "react-native";
-import { TextInput, Button, Text, Card } from "react-native-paper";
-import { router } from "expo-router";
+import {
+  View,
+  StyleSheet,
+  Alert,
+  ScrollView,
+  Platform,
+} from "react-native";
+import { TextInput, Button, Text, Menu } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { router } from "expo-router";
+
 import { createApplication } from "../services/applicationService";
 import { fetchCompanies } from "../services/companyService";
 
 export default function AddApplicationScreen() {
-  const [role, setRole] = useState("");
+  const [roleTitle, setRoleTitle] = useState("");
   const [status, setStatus] = useState("Applied");
-  const [applicationDate, setApplicationDate] = useState("");
+  const [applicationDate, setApplicationDate] = useState(new Date());
   const [salaryExpectation, setSalaryExpectation] = useState("");
+  const [company, setCompany] = useState("");
+  const [selectedCompanyName, setSelectedCompanyName] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [companies, setCompanies] = useState([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [statusMenuVisible, setStatusMenuVisible] = useState(false);
+  const [companyMenuVisible, setCompanyMenuVisible] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   async function loadCompanies() {
     const token = await SecureStore.getItemAsync("token");
-    const result = await fetchCompanies(token);
+
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    const result = await fetchCompanies(token, 1, "", "newest", 100);
 
     if (result.success) {
       setCompanies(result.data || []);
     }
   }
 
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
-  function convertDateToBackendFormat(dateText: string) {
-    const parts = dateText.split("-");
-
-    if (parts.length !== 3) {
-      return dateText;
-    }
-
-    const [day, month, year] = parts;
-
-    return `${year}-${month}-${day}`;
-  }
-
   async function handleSave() {
-    if (!role || !applicationDate || !selectedCompanyId) {
-      Alert.alert(
-        "Error",
-        "Please enter role, application date and select a company"
-      );
+    if (!roleTitle || !company) {
+      Alert.alert("Missing details", "Please enter role and select company.");
       return;
     }
 
-    setLoading(true);
-
     const token = await SecureStore.getItemAsync("token");
 
-    const result = await createApplication(
-      {
-        roleTitle: role,
-        status,
-        applicationDate: convertDateToBackendFormat(applicationDate),
-        salaryExpectation,
-        company: selectedCompanyId,
-        notes,
-      },
-      token
-    );
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
 
-    setLoading(false);
+    const application = {
+      roleTitle,
+      status,
+      applicationDate: applicationDate.toISOString().split("T")[0],
+      salaryExpectation,
+      company,
+      notes,
+    };
+
+    const result = await createApplication(application, token);
 
     if (!result.success) {
       Alert.alert("Error", result.message);
@@ -78,65 +76,154 @@ export default function AddApplicationScreen() {
     router.replace("/(tabs)/applications");
   }
 
+  useEffect(() => {
+    loadCompanies();
+  }, []);
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text variant="headlineMedium" style={styles.title}>
-        Add Application
-      </Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.heading}>Application</Text>
 
       <TextInput
-        label="Role"
-        value={role}
-        onChangeText={setRole}
+        label="Role *"
+        value={roleTitle}
+        onChangeText={setRoleTitle}
         mode="outlined"
         style={styles.input}
+        outlineColor="#D1D5DB"
+        textColor="#111827"
+        theme={{
+          colors: {
+            onSurface: "#111827",
+            onSurfaceVariant: "#111827",
+          },
+        }}
       />
 
-      <TextInput
-        label="Status"
-        value={status}
-        onChangeText={setStatus}
-        mode="outlined"
-        placeholder="Applied / Under Review / Interview Scheduled"
-        style={styles.input}
-      />
+      <Text style={styles.label}>Status</Text>
+      <Menu
+        visible={statusMenuVisible}
+        onDismiss={() => setStatusMenuVisible(false)}
+        anchor={
+          <Button
+            mode="outlined"
+            style={styles.dropdown}
+            contentStyle={styles.dropdownContent}
+            labelStyle={styles.dropdownText}
+            onPress={() => setStatusMenuVisible(true)}
+          >
+            {status}
+          </Button>
+        }
+      >
+        {["Applied", "Interview Scheduled", "Offered", "Rejected"].map(
+          (item) => (
+            <Menu.Item
+              key={item}
+              title={item}
+              onPress={() => {
+                setStatus(item);
+                setStatusMenuVisible(false);
+              }}
+            />
+          )
+        )}
+      </Menu>
 
-      <TextInput
-        label="Application Date"
-        value={applicationDate}
-        onChangeText={setApplicationDate}
+      <Text style={styles.label}>Application Date</Text>
+      <Button
         mode="outlined"
-        placeholder="DD-MM-YYYY"
-        style={styles.input}
-      />
+        style={styles.dropdown}
+        contentStyle={styles.dropdownContent}
+        labelStyle={styles.dropdownText}
+        onPress={() => setShowDatePicker(true)}
+      >
+        {applicationDate.toLocaleDateString("en-AU")}
+      </Button>
+
+      {showDatePicker && (
+        <View style={styles.datePickerBox}>
+          <DateTimePicker
+            value={applicationDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            textColor="#111827"
+            themeVariant="light"
+            onChange={(event, selectedDate) => {
+              if (Platform.OS !== "ios") {
+                setShowDatePicker(false);
+              }
+
+              if (selectedDate) {
+                setApplicationDate(selectedDate);
+              }
+            }}
+          />
+
+          {Platform.OS === "ios" ? (
+            <Button
+              mode="contained"
+              buttonColor="#1976D2"
+              textColor="white"
+              style={styles.doneButton}
+              onPress={() => setShowDatePicker(false)}
+            >
+              Done
+            </Button>
+          ) : null}
+        </View>
+      )}
 
       <TextInput
         label="Salary Expectation"
         value={salaryExpectation}
         onChangeText={setSalaryExpectation}
         mode="outlined"
-        keyboardType="numeric"
         style={styles.input}
+        textColor="#111827"
+        theme={{
+          colors: {
+            onSurface: "#111827",
+            onSurfaceVariant: "#111827",
+          },
+        }}
       />
 
-      <Text style={styles.label}>Select Company</Text>
-
-      {companies.map((company: any) => (
-        <Card
-          key={company._id || company.id}
-          style={[
-            styles.companyCard,
-            selectedCompanyId === (company._id || company.id) &&
-              styles.selectedCard,
-          ]}
-          onPress={() => setSelectedCompanyId(company._id || company.id)}
-        >
-          <Card.Content>
-            <Text style={styles.companyName}>{company.name}</Text>
-            <Text>{company.industry}</Text>
-          </Card.Content>
-        </Card>
-      ))}
+      <Text style={styles.label}>Company</Text>
+      <Menu
+        visible={companyMenuVisible}
+        onDismiss={() => setCompanyMenuVisible(false)}
+        anchor={
+          <Button
+            mode="outlined"
+            style={styles.dropdown}
+            contentStyle={styles.dropdownContent}
+            labelStyle={[
+              styles.dropdownText,
+              !selectedCompanyName && styles.placeholderText,
+            ]}
+            onPress={() => setCompanyMenuVisible(true)}
+          >
+            {selectedCompanyName || "Select company"}
+          </Button>
+        }
+      >
+        {companies.map((item: any) => (
+          <Menu.Item
+            key={item._id || item.id}
+            title={item.name || item.companyName}
+            onPress={() => {
+              setCompany(item._id || item.id);
+              setSelectedCompanyName(item.name || item.companyName);
+              setCompanyMenuVisible(false);
+            }}
+          />
+        ))}
+      </Menu>
 
       <TextInput
         label="Notes"
@@ -145,18 +232,26 @@ export default function AddApplicationScreen() {
         mode="outlined"
         multiline
         numberOfLines={4}
-        style={styles.input}
+        style={styles.notes}
+        outlineColor="#D1D5DB"
+        activeOutlineColor="#1976D2"
+        textColor="#111827"
+        theme={{
+          colors: {
+            onSurface: "#111827",
+            onSurfaceVariant: "#111827",
+          },
+        }}
       />
 
       <Button
         mode="contained"
         buttonColor="#1976D2"
         textColor="white"
-        onPress={handleSave}
-        loading={loading}
         style={styles.saveButton}
+        onPress={handleSave}
       >
-        Save Application
+        Save
       </Button>
     </ScrollView>
   );
@@ -165,37 +260,73 @@ export default function AddApplicationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F4F6F8",
+    backgroundColor: "#FFFFFF",
   },
   content: {
-    padding: 20,
+    padding: 16,
+    paddingBottom: 40,
   },
-  title: {
-    marginBottom: 24,
+  heading: {
+    fontSize: 32,
     fontWeight: "bold",
-  },
-  input: {
-    marginBottom: 16,
-    backgroundColor: "white",
+    marginBottom: 22,
+    color: "#111827",
   },
   label: {
-    fontWeight: "bold",
-    marginBottom: 10,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 8,
+    marginTop: 10,
+    color: "#111827",
   },
-  companyCard: {
-    marginBottom: 10,
+
+  input: {
+    marginBottom: 14,
+    backgroundColor: "#FFFFFF",
+    color: "#111827",
+  },
+
+  notes: {
+    marginBottom: 20,
+    backgroundColor: "#FFFFFF",
+    minHeight: 85,
+    color: "#111827",
+  },
+  dropdown: {
+    marginBottom: 14,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+    minHeight: 56,
+  },
+  dropdownContent: {
+    justifyContent: "flex-start",
+    minHeight: 56,
+  },
+  dropdownText: {
+    color: "#111827",
+    fontSize: 16,
+    textAlign: "left",
+  },
+  placeholderText: {
+    color: "#9CA3AF",
+  },
+  datePickerBox: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
     borderRadius: 12,
-    backgroundColor: "white",
+    marginBottom: 14,
+    paddingVertical: 8,
   },
-  selectedCard: {
-    borderWidth: 2,
-    borderColor: "#1976D2",
-  },
-  companyName: {
-    fontWeight: "bold",
+  doneButton: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 10,
   },
   saveButton: {
-    marginTop: 10,
     borderRadius: 10,
+    marginTop: 4,
+    marginBottom: 35,
   },
 });
