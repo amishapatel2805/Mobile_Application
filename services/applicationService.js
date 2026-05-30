@@ -1,12 +1,20 @@
 import { apiRequest } from "./api";
 
-export async function fetchApplications(token) {
-  return await apiRequest(
-    "/api/applications",
-    "GET",
-    null,
-    token
-  );
+export async function fetchApplications(
+  token,
+  page = 1,
+  search = "",
+  sort = "newest",
+  limit = 100
+) {
+  const query = new URLSearchParams({
+    search,
+    sort,
+    page: page.toString(),
+    limit: limit.toString(),
+  }).toString();
+
+  return await apiRequest(`/api/applications?${query}`, "GET", null, token);
 }
 
 export async function createApplication(application, token) {

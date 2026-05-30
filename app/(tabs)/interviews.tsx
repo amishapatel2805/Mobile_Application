@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { Card, Text, Button } from "react-native-paper";
+import { Card, Text, Button, TextInput, Menu } from "react-native-paper";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import {
@@ -17,6 +17,13 @@ import {
 export default function InterviewsScreen() {
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [sortOption, setSortOption] = useState("newest");
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
+
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const itemsPerPage = 5;
 
   async function loadInterviews() {
     setLoading(true);
@@ -25,7 +32,7 @@ export default function InterviewsScreen() {
 
     if (!token) {
       setLoading(false);
-      router.replace("/");
+      router.replace("/login");
       return;
     }
 
@@ -69,7 +76,7 @@ export default function InterviewsScreen() {
           const token = await SecureStore.getItemAsync("token");
 
           if (!token) {
-            router.replace("/");
+            router.replace("/login");
             return;
           }
 
@@ -85,6 +92,40 @@ export default function InterviewsScreen() {
         },
       },
     ]);
+  }
+
+  const filteredInterviews = interviews
+    .filter((item: any) => {
+      const text = `${item.round || ""} ${item.mode || ""} ${
+        item.outcome || ""
+      } ${item.application?.roleTitle || ""}`.toLowerCase();
+
+      return text.includes(search.toLowerCase());
+    })
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a.createdAt || a.interviewDate || 0).getTime();
+      const dateB = new Date(b.createdAt || b.interviewDate || 0).getTime();
+
+      if (sortOption === "oldest") {
+        return dateA - dateB;
+      }
+
+      return dateB - dateA;
+    });
+
+  const visibleInterviews = filteredInterviews.slice(0, visibleCount);
+
+  function loadMoreInterviews() {
+    if (loadingMore || visibleCount >= filteredInterviews.length) {
+      return;
+    }
+
+    setLoadingMore(true);
+
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + itemsPerPage);
+      setLoadingMore(false);
+    }, 1500);
   }
 
   useEffect(() => {
@@ -104,19 +145,77 @@ export default function InterviewsScreen() {
     <View style={styles.container}>
       <Text style={styles.heading}>Interviews</Text>
 
-      <Button
-        mode="contained"
-        buttonColor="#1976D2"
-        textColor="white"
-        style={styles.addButton}
-        onPress={() => router.push("/add-interview")}
-      >
-        + Add Interview
-      </Button>
+      <TextInput
+        label="Search interviews"
+        value={search}
+        onChangeText={(text) => {
+          setSearch(text);
+          setVisibleCount(5);
+        }}
+        mode="outlined"
+        left={<TextInput.Icon icon="magnify" />}
+        style={styles.searchInput}
+      />
+
+      <View style={styles.topActions}>
+        <Button
+          mode="contained"
+          buttonColor="#1976D2"
+          textColor="white"
+          style={styles.addButton}
+          onPress={() => router.push("/add-interview")}
+        >
+          + Add Interview
+        </Button>
+
+        <Menu
+          visible={sortMenuVisible}
+          onDismiss={() => setSortMenuVisible(false)}
+          anchor={
+            <Button
+              mode="outlined"
+              style={styles.sortButton}
+              onPress={() => setSortMenuVisible(true)}
+            >
+              Sort: {sortOption}
+            </Button>
+          }
+        >
+          <Menu.Item
+            title="newest"
+            onPress={() => {
+              setSortOption("newest");
+              setVisibleCount(5);
+              setSortMenuVisible(false);
+            }}
+          />
+
+          <Menu.Item
+            title="oldest"
+            onPress={() => {
+              setSortOption("oldest");
+              setVisibleCount(5);
+              setSortMenuVisible(false);
+            }}
+          />
+        </Menu>
+      </View>
 
       <FlatList
-        data={interviews}
+        data={visibleInterviews}
         keyExtractor={(item: any) => item._id || item.id}
+        onEndReached={loadMoreInterviews}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.loaderBox}>
+              <ActivityIndicator size="large" color="#1976D2" />
+              <Text style={styles.loadingText}>
+                Loading more interviews...
+              </Text>
+            </View>
+          ) : null
+        }
         renderItem={({ item }: any) => (
           <Card style={styles.card}>
             <Card.Content>
@@ -211,9 +310,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     color: "#111827",
   },
+  searchInput: {
+    marginBottom: 14,
+    backgroundColor: "white",
+  },
+  topActions: {
+    marginBottom: 18,
+  },
   addButton: {
-    marginBottom: 20,
+    marginBottom: 10,
     borderRadius: 10,
+  },
+  sortButton: {
+    borderRadius: 10,
+    backgroundColor: "white",
   },
   card: {
     marginBottom: 15,
@@ -263,6 +373,15 @@ const styles = StyleSheet.create({
   actionButton: {
     borderRadius: 10,
     minWidth: 120,
+  },
+  loaderBox: {
+    paddingVertical: 24,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 8,
+    color: "#6B7280",
+    fontSize: 14,
   },
   emptyText: {
     textAlign: "center",

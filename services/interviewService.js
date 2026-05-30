@@ -1,12 +1,20 @@
 import { apiRequest } from "./api";
 
-export async function fetchInterviews(token) {
-  return await apiRequest(
-    "/api/interviews",
-    "GET",
-    null,
-    token
-  );
+export async function fetchInterviews(
+  token,
+  page = 1,
+  search = "",
+  sort = "newest",
+  limit = 100
+) {
+  const query = new URLSearchParams({
+    search,
+    sort,
+    page: page.toString(),
+    limit: limit.toString(),
+  }).toString();
+
+  return await apiRequest(`/api/interviews?${query}`, "GET", null, token);
 }
 
 export async function createInterview(interview, token) {
