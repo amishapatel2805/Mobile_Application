@@ -1,62 +1,54 @@
-import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
+  View,
   FlatList,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
-import { Button, Card, Menu, Text } from "react-native-paper";
-import { deleteCompany, fetchCompanies } from "../../services/companyService";
-
-const SORT_OPTIONS = [
-  { value: "newest", label: "Newest First" },
-  { value: "oldest", label: "Oldest First" },
-  { value: "name_asc", label: "Name A-Z" },
-  { value: "name_desc", label: "Name Z-A" },
-];
+import { Card, Text, Button, TextInput, Menu } from "react-native-paper";
+import * as SecureStore from "expo-secure-store";
+import { router } from "expo-router";
+import {
+  fetchCompanies,
+  deleteCompany,
+} from "../../services/companyService";
 
 export default function CompaniesScreen() {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("oldest");
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [sortOption, setSortOption] = useState("Newest");
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
-  async function loadCompanies(pageNumber = 1, reset = false) {
-    if (loadingMore) return;
-    if (reset) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const itemsPerPage = 5;
+
+  async function loadCompanies() {
+    setLoading(true);
+    setErrorMessage("");
+
     const token = await SecureStore.getItemAsync("token");
 
     if (!token) {
-      router.replace("/");
+      setLoading(false);
+      router.replace("/login");
       return;
     }
-    const result = await fetchCompanies(token, pageNumber, search, sort);
+
+    const result = await fetchCompanies(token);
+
     if (!result.success) {
       setErrorMessage(result.message);
+      setCompanies([]);
       setLoading(false);
-      setLoadingMore(false);
       return;
     }
-    const newCompanies = result.data?.companies || result.data || [];
-    setCompanies((prev) => (reset ? newCompanies : [...prev, ...newCompanies]));
-    setHasMore(newCompanies.length > 0);
-    setPage(pageNumber);
+
+    setCompanies(result.data || []);
     setLoading(false);
-    setLoadingMore(false);
   }
 
   async function handleDelete(id: string) {
@@ -64,22 +56,27 @@ export default function CompaniesScreen() {
       "Delete Company",
       "Are you sure you want to delete this company?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
             const token = await SecureStore.getItemAsync("token");
+
+            if (!token) {
+              router.replace("/login");
+              return;
+            }
+
             const result = await deleteCompany(id, token);
+
             if (!result.success) {
               Alert.alert("Error", result.message);
               return;
             }
+
             Alert.alert("Success", "Company deleted successfully");
-            loadCompanies(1, true);
+            loadCompanies();
           },
         },
       ]
@@ -100,21 +97,74 @@ export default function CompaniesScreen() {
     });
   }
 
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      loadCompanies(1, true);
-    }, 400);
-    return () => clearTimeout(delay);
-  }, [search, sort]);
+  const filteredCompanies = companies
+    .filter((item: any) => {
+      const text = `${item.name || ""} ${item.companyName || ""} ${
+        item.industry || ""
+      } ${item.location || ""}`.toLowerCase();
 
-  const activeSortLabel =
-    SORT_OPTIONS.find((item) => item.value === sort)?.label || "Sort";
+      return text.includes(search.toLowerCase());
+    })
+    .sort((a: any, b: any) => {
+      if (sortOption === "A-Z") {
+        return (a.name || a.companyName || "").localeCompare(
+          b.name || b.companyName || ""
+        );
+      }
+
+      if (sortOption === "Z-A") {
+        return (b.name || b.companyName || "").localeCompare(
+          a.name || a.companyName || ""
+        );
+      }
+
+      if (sortOption === "Oldest") {
+        return (
+          new Date(a.createdAt || 0).getTime() -
+          new Date(b.createdAt || 0).getTime()
+        );
+      }
+
+      return (
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime()
+      );
+    });
+
+  const paginatedCompanies = filteredCompanies.slice(0, visibleCount);
+
+  function loadMoreCompanies() {
+    if (visibleCount >= filteredCompanies.length || loadingMore) {
+      return;
+    }
+
+    setLoadingMore(true);
+
+    setTimeout(() => {
+      setVisibleCount((prev) => prev + itemsPerPage);
+      setLoadingMore(false);
+    }, 700);
+  }
+
+  useEffect(() => {
+    loadCompanies();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.message}>Loading companies...</Text>
+      </View>
+    );
+  }
 
   if (errorMessage) {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>{errorMessage}</Text>
-        <Button mode="contained" onPress={() => loadCompanies(1, true)}>
+
+        <Button mode="contained" onPress={loadCompanies}>
           Retry
         </Button>
       </View>
@@ -123,113 +173,127 @@ export default function CompaniesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <Text style={styles.heading}>Companies</Text>
-        <TouchableOpacity
+      <Text style={styles.heading}>Companies</Text>
+
+      <TextInput
+        label="Search companies"
+        value={search}
+        onChangeText={(text) => {
+          setSearch(text);
+          setVisibleCount(5);
+        }}
+        mode="outlined"
+        left={<TextInput.Icon icon="magnify" />}
+        style={styles.searchInput}
+      />
+
+      <View style={styles.topActions}>
+        <Button
+          mode="contained"
+          buttonColor="#1976D2"
+          textColor="white"
           style={styles.addButton}
           onPress={() => router.push("/add-company")}
         >
-          <Text style={styles.addButtonPlus}>+</Text>
-          <Text style={styles.addButtonLabel}>Add Company</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Search + Filter */}
-      <View style={styles.searchRow}>
-        <TextInput
-          placeholder="Search companies..."
-          placeholderTextColor="#94A3B8"
-          value={search}
-          onChangeText={setSearch}
-          style={styles.searchInput}
-        />
+          + Add Company
+        </Button>
 
         <Menu
-          visible={menuVisible}
-          onDismiss={() => setMenuVisible(false)}
+          visible={sortMenuVisible}
+          onDismiss={() => setSortMenuVisible(false)}
           anchor={
-            <TouchableOpacity
-              style={styles.filterButton}
-              onPress={() => setMenuVisible(true)}
+            <Button
+              mode="outlined"
+              style={styles.sortButton}
+              onPress={() => setSortMenuVisible(true)}
             >
-              <Text style={styles.filterLabel}>{activeSortLabel}</Text>
-              <Text style={styles.chevron}>⌄</Text>
-            </TouchableOpacity>
+              Sort: {sortOption}
+            </Button>
           }
         >
-          {SORT_OPTIONS.map((item) => (
+          {["Newest", "Oldest", "A-Z", "Z-A"].map((option) => (
             <Menu.Item
-              key={item.value}
-              title={item.label}
+              key={option}
+              title={option}
               onPress={() => {
-                setSort(item.value);
-                setMenuVisible(false);
+                setSortOption(option);
+                setVisibleCount(5);
+                setSortMenuVisible(false);
               }}
             />
           ))}
         </Menu>
       </View>
 
-      {/* Loading */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2E86DE" />
-          <Text style={styles.message}>Loading companies...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={companies}
-          keyExtractor={(item: any) =>
-            item.id?.toString() || item._id?.toString()
-          }
-          renderItem={({ item }: any) => (
-            <Card style={styles.card}>
-              <Card.Content>
-                <Text variant="titleLarge" style={styles.companyName}>
-                  {item.name || item.companyName}
-                </Text>
+      <FlatList
+        data={paginatedCompanies}
+        keyExtractor={(item: any) => item._id || item.id}
+        onEndReached={loadMoreCompanies}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator size="small" style={styles.footerLoader} />
+          ) : null
+        }
+        renderItem={({ item }: any) => (
+          <Card style={styles.companyCard}>
+            <Card.Content>
+              <Text style={styles.companyTitle}>
+                {item.name || item.companyName}
+              </Text>
 
-                <Text style={styles.detailText}>
-                  Industry: {item.industry || "N/A"}
-                </Text>
+              <Text style={styles.label}>Industry</Text>
+              <Text style={styles.companyInfo}>
+                {item.industry || "Not specified"}
+              </Text>
 
-                <Text style={styles.detailText}>
-                  Location: {item.location || "N/A"}
-                </Text>
-              </Card.Content>
+              <Text style={styles.label}>Location</Text>
+              <Text style={styles.companyInfo}>
+                {item.location || "Not specified"}
+              </Text>
 
-              <Card.Actions style={styles.actions}>
-                <Button onPress={() => handleEdit(item)}>Edit</Button>
+              {item.website ? (
+                <>
+                  <Text style={styles.label}>Website</Text>
+                  <Text style={styles.website}>{item.website}</Text>
+                </>
+              ) : null}
 
-                <Button
-                  textColor="red"
-                  onPress={() => handleDelete(item._id || item.id)}
-                >
-                  Delete
-                </Button>
-              </Card.Actions>
-            </Card>
-          )}
-          onEndReached={() => {
-            if (hasMore && !loadingMore) {
-              loadCompanies(page + 1);
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            loadingMore ? (
-              <View
-                style={{
-                  paddingVertical: 20,
-                }}
+              {item.notes ? (
+                <>
+                  <Text style={styles.label}>Notes</Text>
+                  <Text style={styles.notes}>{item.notes}</Text>
+                </>
+              ) : null}
+            </Card.Content>
+
+            <Card.Actions style={styles.cardActions}>
+              <Button
+                mode="contained"
+                buttonColor="#2D8FE3"
+                textColor="white"
+                style={styles.actionButton}
+                onPress={() => handleEdit(item)}
               >
-                <ActivityIndicator />
-              </View>
-            ) : null
-          }
-        />
-      )}
+                Edit
+              </Button>
+
+              <Button
+                mode="contained"
+                buttonColor="#EF4444"
+                textColor="white"
+                style={styles.actionButton}
+                onPress={() => handleDelete(item._id || item.id)}
+              >
+                Delete
+              </Button>
+            </Card.Actions>
+          </Card>
+        )}
+        ListEmptyComponent={
+          <Text style={styles.message}>No companies found.</Text>
+        }
+      />
     </View>
   );
 }
@@ -237,111 +301,91 @@ export default function CompaniesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 18,
+    padding: 16,
     backgroundColor: "#F4F6F8",
   },
-
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-
   heading: {
-    fontSize: 30,
-    fontWeight: "800",
-  },
-
-  addButton: {
-    backgroundColor: "#2E86DE",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-
-  addButtonPlus: {
-    color: "#fff",
-    fontSize: 24,
-    marginRight: 6,
-  },
-
-  addButtonLabel: {
-    color: "#fff",
-    fontWeight: "700",
-  },
-
-  searchRow: {
-    flexDirection: "row",
-    marginBottom: 20,
-    gap: 10,
-  },
-
-  searchInput: {
-    flex: 1,
-    height: 50,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    fontSize: 16,
-  },
-
-  filterButton: {
-    height: 50,
-    minWidth: 160,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-  },
-
-  filterLabel: {
-    fontWeight: "600",
-  },
-
-  chevron: {
-    fontSize: 20,
-    color: "#64748B",
-  },
-
-  card: {
-    marginBottom: 15,
-    borderRadius: 16,
-  },
-
-  companyName: {
+    fontSize: 32,
     fontWeight: "bold",
+    marginBottom: 16,
+    color: "#111827",
   },
-
-  detailText: {
-    color: "#555",
-    marginTop: 4,
+  searchInput: {
+    marginBottom: 14,
+    backgroundColor: "white",
   },
-
-  actions: {
+  topActions: {
+    marginBottom: 18,
+  },
+  addButton: {
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  sortButton: {
+    borderRadius: 12,
+    backgroundColor: "white",
+  },
+  companyCard: {
+    marginBottom: 16,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    elevation: 3,
+  },
+  companyTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 12,
+    color: "#111827",
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  companyInfo: {
+    fontSize: 16,
+    color: "#475569",
+    marginBottom: 6,
+  },
+  website: {
+    fontSize: 15,
+    color: "#2563EB",
+    marginBottom: 10,
+  },
+  notes: {
+    fontSize: 15,
+    color: "#64748B",
+    marginTop: 6,
+  },
+  cardActions: {
     justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
-
+  actionButton: {
+    borderRadius: 10,
+    minWidth: 110,
+  },
+  footerLoader: {
+    marginVertical: 20,
+  },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#F4F6F8",
   },
-
   message: {
-    marginTop: 10,
+    textAlign: "center",
+    marginTop: 20,
+    color: "#6B7280",
   },
-
   error: {
-    color: "red",
-    marginBottom: 10,
+    marginBottom: 20,
+    color: "#EF4444",
+    textAlign: "center",
+    fontSize: 16,
   },
 });
